@@ -1,0 +1,934 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>실시간 가위바위보</title>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      height: 100vh;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    #app {
+      width: 100%;
+      max-width: 960px;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      padding: 12px 16px;
+    }
+
+    /* ── 모드 선택 화면 ── */
+    #setup-screen {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      overflow: hidden;
+      gap: 0;
+    }
+
+    /* 배경 파티클 이모지 */
+    .bg-emoji {
+      position: absolute;
+      font-size: 4rem;
+      opacity: 0.07;
+      pointer-events: none;
+      user-select: none;
+      animation: bgFloat ease-in-out infinite;
+    }
+
+    @keyframes bgFloat {
+      0%   { transform: translateY(0)    rotate(0deg)  scale(1);    }
+      30%  { transform: translateY(-18px) rotate(8deg)  scale(1.06); }
+      60%  { transform: translateY(8px)  rotate(-5deg) scale(0.94); }
+      100% { transform: translateY(0)    rotate(0deg)  scale(1);    }
+    }
+
+    /* 이모지 쇼케이스 */
+    .emoji-showcase {
+      display: flex;
+      gap: 18px;
+      margin-bottom: 18px;
+    }
+
+    .sh-emoji {
+      font-size: 3rem;
+      display: inline-block;
+      filter: drop-shadow(0 4px 14px rgba(255,255,255,0.45));
+      animation: shEmoji 1.6s ease-in-out infinite alternate;
+    }
+
+    .sh-emoji:nth-child(2) { animation-delay: 0.25s; }
+    .sh-emoji:nth-child(3) { animation-delay: 0.5s;  }
+
+    @keyframes shEmoji {
+      from { transform: translateY(0)   scale(1);    }
+      to   { transform: translateY(-9px) scale(1.12); }
+    }
+
+    /* 제목 */
+    .setup-title {
+      font-size: 3.6rem;
+      font-weight: 900;
+      color: #fff;
+      letter-spacing: -1px;
+      margin-bottom: 10px;
+      animation: titleGlow 2.5s ease-in-out infinite;
+    }
+
+    @keyframes titleGlow {
+      0%, 100% { text-shadow: 0 0 20px rgba(255,255,255,0.4), 0 4px 24px rgba(0,0,0,0.25); }
+      50%       { text-shadow: 0 0 50px rgba(255,255,255,0.75), 0 4px 24px rgba(0,0,0,0.25); }
+    }
+
+    /* 부제 */
+    .setup-sub {
+      font-size: 0.95rem;
+      color: rgba(255,255,255,0.7);
+      letter-spacing: 1.5px;
+      margin-bottom: 44px;
+    }
+
+    /* 구분선 장식 */
+    .setup-divider {
+      width: 60px;
+      height: 3px;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.6), transparent);
+      border-radius: 2px;
+      margin-bottom: 44px;
+      animation: dividerPulse 2.5s ease-in-out infinite;
+    }
+
+    @keyframes dividerPulse {
+      0%, 100% { width: 60px;  opacity: 0.6; }
+      50%       { width: 100px; opacity: 1;   }
+    }
+
+    /* 모드 카드 */
+    .mode-cards {
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .mode-card {
+      background: rgba(255,255,255,0.13);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border: 1.5px solid rgba(255,255,255,0.28);
+      border-radius: 22px;
+      padding: 26px 30px 22px;
+      cursor: pointer;
+      color: #fff;
+      text-align: center;
+      min-width: 130px;
+      transition: transform 0.22s cubic-bezier(.34,1.56,.64,1),
+                  box-shadow 0.22s ease,
+                  background 0.22s ease;
+      box-shadow: 0 8px 28px rgba(0,0,0,0.18),
+                  inset 0 1px 0 rgba(255,255,255,0.2);
+    }
+
+    .mode-card:hover {
+      transform: translateY(-8px) scale(1.05);
+      background: rgba(255,255,255,0.24);
+      box-shadow: 0 20px 48px rgba(0,0,0,0.28),
+                  0 0 24px rgba(255,255,255,0.12),
+                  inset 0 1px 0 rgba(255,255,255,0.3);
+    }
+
+    .mode-card:active { transform: translateY(-3px) scale(1.02); }
+
+    .mc-icon { font-size: 2.2rem; margin-bottom: 10px; }
+    .mc-name { font-size: 1.05rem; font-weight: 800; margin-bottom: 5px; letter-spacing: 0.5px; }
+    .mc-desc { font-size: 0.78rem; opacity: 0.68; }
+
+    /* ── 게임 화면 ── */
+    #game-screen {
+      display: none;
+      flex-direction: column;
+      flex: 1;
+      gap: 8px;
+      min-height: 0;
+    }
+
+    /* 헤더 */
+    .game-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: rgba(255,255,255,0.18);
+      border-radius: 12px;
+      padding: 8px 16px;
+      color: #fff;
+      flex-shrink: 0;
+    }
+
+    .hdr-title  { font-size: 1.1rem; font-weight: 900; }
+    .hdr-round  { font-size: 1rem;   font-weight: 700; opacity: 0.9; }
+    .hdr-right  { display: flex; align-items: center; gap: 12px; }
+    .hdr-score  { font-size: 1rem; font-weight: 700; }
+
+    .quit-btn {
+      padding: 5px 14px;
+      border: 2px solid rgba(255,255,255,0.65);
+      background: transparent;
+      color: #fff;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 700;
+      font-size: 0.85rem;
+      transition: background 0.15s;
+    }
+    .quit-btn:hover { background: rgba(255,255,255,0.2); }
+
+    /* 결과 영역 */
+    .result-area {
+      background: rgba(255,255,255,0.97);
+      border-radius: 12px;
+      padding: 10px 20px;
+      text-align: center;
+      flex-shrink: 0;
+    }
+
+    #result-text {
+      font-size: 2.2rem;
+      font-weight: 900;
+      letter-spacing: 6px;
+    }
+
+    .result-win  { color: #22c55e; }
+    .result-lose { color: #ef4444; }
+    .result-draw { color: #f59e0b; }
+    .result-wait { color: #ccc; }
+
+    /* 게임 메인 영역 */
+    .game-main {
+      display: flex;
+      flex: 1;
+      gap: 10px;
+      min-height: 0;
+      align-items: stretch;
+    }
+
+    /* 공통 사이드 */
+    .user-side,
+    .cpu-side {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      min-width: 0;
+      min-height: 0;
+    }
+
+    /* 제스처 라벨 (웹캠/컴퓨터 위에 표시) */
+    .gesture-label {
+      background: rgba(255,255,255,0.97);
+      border-radius: 10px;
+      padding: 8px 14px;
+      text-align: center;
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: #444;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+
+    .gesture-label .g-icon { font-size: 1.4rem; }
+    .gesture-label .g-name { font-size: 1rem; }
+
+    /* 웹캠 */
+    #video-container {
+      flex: 1;
+      position: relative;
+      border-radius: 14px;
+      overflow: hidden;
+      background: #111;
+      min-height: 0;
+    }
+
+    #input-video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+      transform: scaleX(-1);
+    }
+
+    #output-canvas {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%;
+      height: 100%;
+      /* CSS transform 없이 JS에서 직접 미러링 좌표 계산 */
+    }
+
+    /* 인식 상태 배지 */
+    #capture-status {
+      position: absolute;
+      bottom: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0,0,0,0.65);
+      color: #fff;
+      padding: 5px 16px;
+      border-radius: 20px;
+      font-size: 0.9rem;
+      font-weight: 700;
+      pointer-events: none;
+      white-space: nowrap;
+    }
+
+    /* 카운트다운 오버레이 */
+    #countdown-overlay {
+      display: none;
+      position: absolute;
+      inset: 0;
+      background: rgba(0,0,0,0.55);
+      align-items: center;
+      justify-content: center;
+    }
+
+    #countdown-overlay.active { display: flex; }
+
+    #countdown-number {
+      font-size: 7rem;
+      font-weight: 900;
+      color: #fff;
+      text-shadow: 0 4px 20px rgba(0,0,0,0.5);
+      animation: pop 0.45s ease-out;
+    }
+
+    @keyframes pop {
+      0%   { transform: scale(1.7); opacity: 0; }
+      100% { transform: scale(1);   opacity: 1; }
+    }
+
+    /* VS 구분자 */
+    .vs-divider {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.3rem;
+      font-weight: 900;
+      color: #fff;
+      text-shadow: 0 2px 8px rgba(0,0,0,0.4);
+      flex-shrink: 0;
+      width: 36px;
+    }
+
+    /* 컴퓨터 아이콘 */
+    .cpu-icon-box {
+      flex: 1;
+      background: rgba(255,255,255,0.97);
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 5.5rem;
+      min-height: 0;
+    }
+
+    /* ── 게임 종료 오버레이 ── */
+    #end-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.72);
+      align-items: center;
+      justify-content: center;
+      z-index: 999;
+    }
+
+    #end-overlay.active { display: flex; }
+
+    #end-card {
+      background: #fff;
+      border-radius: 24px;
+      padding: 48px 56px;
+      text-align: center;
+      box-shadow: 0 30px 80px rgba(0,0,0,0.3);
+      animation: slideUp 0.35s ease-out;
+    }
+
+    @keyframes slideUp {
+      from { transform: translateY(36px); opacity: 0; }
+      to   { transform: translateY(0);    opacity: 1; }
+    }
+
+    #end-title  { font-size: 2.4rem; font-weight: 900; margin-bottom: 10px; }
+    #end-score  { font-size: 1.2rem; color: #555; margin-bottom: 6px; }
+    #end-reason { font-size: 0.95rem; color: #aaa; margin-bottom: 28px; min-height: 1.2em; }
+
+    .action-btn {
+      padding: 13px 34px;
+      font-size: 1rem;
+      font-weight: 700;
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      color: #fff;
+      box-shadow: 0 4px 15px rgba(102,126,234,0.4);
+      transition: transform 0.15s, box-shadow 0.15s;
+    }
+    .action-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(102,126,234,0.5); }
+  </style>
+</head>
+<body>
+<div id="app">
+
+  <!-- 모드 선택 -->
+  <div id="setup-screen">
+
+    <!-- 배경 떠다니는 이모지 -->
+    <span class="bg-emoji" style="top:6%;  left:4%;  animation-duration:7s;">✊</span>
+    <span class="bg-emoji" style="top:12%; right:7%; animation-duration:9s; animation-delay:-2s;">✌️</span>
+    <span class="bg-emoji" style="top:50%; left:2%;  animation-duration:8s; animation-delay:-4s;">🖐</span>
+    <span class="bg-emoji" style="top:70%; right:4%; animation-duration:10s;animation-delay:-1s;">✊</span>
+    <span class="bg-emoji" style="bottom:8%; left:8%;animation-duration:7.5s;animation-delay:-3s;">✌️</span>
+    <span class="bg-emoji" style="bottom:15%;right:10%;font-size:5rem;animation-duration:11s;animation-delay:-5s;opacity:0.05;">🖐</span>
+    <span class="bg-emoji" style="top:32%; left:50%;animation-duration:13s;animation-delay:-6s;font-size:6rem;opacity:0.04;">✊</span>
+
+    <!-- 이모지 쇼케이스 -->
+    <div class="emoji-showcase">
+      <span class="sh-emoji">✊</span>
+      <span class="sh-emoji">✌️</span>
+      <span class="sh-emoji">🖐</span>
+    </div>
+
+    <!-- 제목 -->
+    <div class="setup-title">가위바위보</div>
+    <div class="setup-sub">✦ 웹캠으로 손 모양을 인식합니다 ✦</div>
+
+    <!-- 구분선 -->
+    <div class="setup-divider"></div>
+
+    <!-- 모드 카드 -->
+    <div class="mode-cards">
+      <button class="mode-card" onclick="startGame(1,1)">
+        <div class="mc-icon">⚡</div>
+        <div class="mc-name">단판</div>
+        <div class="mc-desc">1회 승부</div>
+      </button>
+      <button class="mode-card" onclick="startGame(3,2)">
+        <div class="mc-icon">🏆</div>
+        <div class="mc-name">3판 2선승</div>
+        <div class="mc-desc">2승 먼저</div>
+      </button>
+      <button class="mode-card" onclick="startGame(5,3)">
+        <div class="mc-icon">👑</div>
+        <div class="mc-name">5판 3선승</div>
+        <div class="mc-desc">3승 먼저</div>
+      </button>
+    </div>
+
+  </div>
+
+  <!-- 게임 화면 -->
+  <div id="game-screen">
+
+    <!-- 헤더 -->
+    <div class="game-header">
+      <div class="hdr-title">✊ 가위바위보</div>
+      <div class="hdr-round" id="round-text">라운드 -</div>
+      <div class="hdr-right">
+        <div class="hdr-score" id="score-text">나 0 : 0 컴퓨터</div>
+        <button class="quit-btn" onclick="quitGame()">그만하기</button>
+      </div>
+    </div>
+
+    <!-- 결과 -->
+    <div class="result-area">
+      <div id="result-text" class="result-wait">- - -</div>
+    </div>
+
+    <!-- 메인: 웹캠 vs 컴퓨터 -->
+    <div class="game-main">
+
+      <!-- 유저 사이드 -->
+      <div class="user-side">
+        <div class="gesture-label">
+          <span class="g-icon" id="user-g-icon">❓</span>
+          <span class="g-name" id="user-g-name">인식 대기</span>
+        </div>
+        <div id="video-container">
+          <video id="input-video" autoplay playsinline muted></video>
+          <canvas id="output-canvas"></canvas>
+          <div id="capture-status">손을 보여주세요</div>
+          <div id="countdown-overlay">
+            <div id="countdown-number">3</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- VS -->
+      <div class="vs-divider">VS</div>
+
+      <!-- 컴퓨터 사이드 -->
+      <div class="cpu-side">
+        <div class="gesture-label">
+          <span class="g-icon" id="cpu-g-icon">❓</span>
+          <span class="g-name" id="cpu-g-name">컴퓨터</span>
+        </div>
+        <div class="cpu-icon-box" id="cpu-icon-big">❓</div>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+
+<!-- 게임 종료 오버레이 -->
+<div id="end-overlay">
+  <div id="end-card">
+    <div id="end-title"></div>
+    <div id="end-score"></div>
+    <div id="end-reason"></div>
+    <button class="action-btn" onclick="resetToSetup()">다시 하기</button>
+  </div>
+</div>
+
+<script>
+/* ═══════════════════════════════════════════
+   상수
+═══════════════════════════════════════════ */
+const CHOICES = ['rock', 'scissors', 'paper'];
+const ICONS   = { rock: '✊', scissors: '✌️', paper: '🖐' };
+const LABELS  = { rock: '바위', scissors: '가위', paper: '보' };
+
+const MAX_MISS = 3; // 연속 인식 실패 허용 횟수
+
+/* ═══════════════════════════════════════════
+   유틸
+═══════════════════════════════════════════ */
+function randomCpuChoice() {
+  return CHOICES[Math.floor(Math.random() * 3)];
+}
+
+function judge(user, cpu) {
+  if (user === cpu) return 'draw';
+  if (
+    (user === 'rock'     && cpu === 'scissors') ||
+    (user === 'scissors' && cpu === 'paper')    ||
+    (user === 'paper'    && cpu === 'rock')
+  ) return 'win';
+  return 'lose';
+}
+
+/* ═══════════════════════════════════════════
+   제스처 인식 (규칙 기반)
+
+   손가락 랜드마크:
+     tip  / pip  / mcp
+   검지: 8 / 6  / 5
+   중지: 12/ 10 / 9
+   약지: 16/ 14 / 13
+   소지: 20/ 18 / 17
+═══════════════════════════════════════════ */
+function isExtended(lm, tip, pip) {
+  // tip이 pip보다 위(y 작음) → 펼침
+  return lm[tip].y < lm[pip].y;
+}
+
+function isClearlyBent(lm, tip, mcp) {
+  // tip이 MCP보다 아래 → 확실히 접힘
+  return lm[tip].y > lm[mcp].y;
+}
+
+function detectGesture(lm) {
+  const indexUp  = isExtended(lm, 8,  6);
+  const middleUp = isExtended(lm, 12, 10);
+  const ringUp   = isExtended(lm, 16, 14);
+  const pinkyUp  = isExtended(lm, 20, 18);
+
+  // 약지·소지가 확실히 접혀 있는지 (MCP 기준으로 판단하여 가위 정확도 향상)
+  const ringBent  = isClearlyBent(lm, 16, 13);
+  const pinkyBent = isClearlyBent(lm, 20, 17);
+
+  const extCount = [indexUp, middleUp, ringUp, pinkyUp].filter(Boolean).length;
+
+  // 바위: 손가락 0~1개 펼침
+  if (extCount <= 1) return 'rock';
+
+  // 가위: 검지+중지 펼침 AND 약지+소지 확실히 접힘
+  if (indexUp && middleUp && ringBent && pinkyBent) return 'scissors';
+
+  // 보: 4개 모두 펼침
+  if (extCount >= 4) return 'paper';
+
+  return null; // 애매한 자세
+}
+
+/* ═══════════════════════════════════════════
+   게임 상태
+═══════════════════════════════════════════ */
+const state = {
+  totalRounds:     1,
+  winsNeeded:      1,
+  userScore:       0,  // 표시용 (승리 + 무승부 포함)
+  cpuScore:        0,  // 표시용 (승리 + 무승부 포함)
+  userWins:        0,  // 실제 승리 횟수 (선승 조건 판단용)
+  cpuWins:         0,  // 실제 승리 횟수 (선승 조건 판단용)
+  round:           0,
+  phase:           'idle', // idle | countdown | capturing | cooldown | ended
+  countdownVal:    3,
+  currentGesture:  null,
+  missCount:       0,
+};
+
+let captureTimer   = null;
+let cooldownTimer  = null;
+let countdownTimer = null;
+
+/* ═══════════════════════════════════════════
+   DOM 참조
+═══════════════════════════════════════════ */
+const $setup       = document.getElementById('setup-screen');
+const $game        = document.getElementById('game-screen');
+const $roundText   = document.getElementById('round-text');
+const $scoreText   = document.getElementById('score-text');
+const $status      = document.getElementById('capture-status');
+const $cdOverlay   = document.getElementById('countdown-overlay');
+const $cdNum       = document.getElementById('countdown-number');
+const $userGIcon   = document.getElementById('user-g-icon');
+const $userGName   = document.getElementById('user-g-name');
+const $cpuGIcon    = document.getElementById('cpu-g-icon');
+const $cpuGName    = document.getElementById('cpu-g-name');
+const $cpuIconBig  = document.getElementById('cpu-icon-big');
+const $result      = document.getElementById('result-text');
+const $endOverlay  = document.getElementById('end-overlay');
+const $endTitle    = document.getElementById('end-title');
+const $endScore    = document.getElementById('end-score');
+const $endReason   = document.getElementById('end-reason');
+const $video       = document.getElementById('input-video');
+const $canvas      = document.getElementById('output-canvas');
+const ctx          = $canvas.getContext('2d');
+
+/* ═══════════════════════════════════════════
+   화면 전환
+═══════════════════════════════════════════ */
+function startGame(total, needed) {
+  state.totalRounds    = total;
+  state.winsNeeded     = needed;
+  state.userScore      = 0;
+  state.cpuScore       = 0;
+  state.userWins       = 0;
+  state.cpuWins        = 0;
+  state.round          = 0;
+  state.phase          = 'idle';
+  state.currentGesture = null;
+  state.missCount      = 0;
+
+  $setup.style.display = 'none';
+  $game.style.display  = 'flex';
+
+  updateHeaderUI();
+  resetChoiceUI();
+  initMediaPipe(); // 처음 한 번만 실제 초기화, 이후는 즉시 반환
+  beginCountdown();
+}
+
+function resetToSetup() {
+  clearAllTimers();
+  state.phase = 'idle';
+  $endOverlay.classList.remove('active');
+  $game.style.display  = 'none';
+  $setup.style.display = 'flex';
+}
+
+function quitGame() {
+  clearAllTimers();
+  resetToSetup();
+}
+
+/* ═══════════════════════════════════════════
+   라운드 흐름
+═══════════════════════════════════════════ */
+function beginCountdown() {
+  if (state.phase === 'ended') return;
+  state.phase        = 'countdown';
+  state.countdownVal = 3;
+  state.round++;
+
+  updateHeaderUI();
+  resetChoiceUI();
+  $cdOverlay.classList.add('active');
+  tickCountdown();
+}
+
+function tickCountdown() {
+  $cdNum.textContent = state.countdownVal;
+  $cdNum.style.animation = 'none';
+  void $cdNum.offsetWidth; // reflow for animation restart
+  $cdNum.style.animation = '';
+
+  countdownTimer = setTimeout(() => {
+    state.countdownVal--;
+    if (state.countdownVal <= 0) {
+      $cdOverlay.classList.remove('active');
+      startCapture();
+    } else {
+      tickCountdown();
+    }
+  }, 1000);
+}
+
+function startCapture() {
+  state.phase = 'capturing';
+  $status.textContent = '인식 중...';
+
+  captureTimer = setTimeout(() => {
+    const gesture = state.currentGesture;
+
+    if (!gesture) {
+      state.missCount++;
+      if (state.missCount >= MAX_MISS) {
+        showEndOverlay(
+          '❌ 인식 실패',
+          `손을 ${MAX_MISS}회 연속 인식하지 못했습니다.`,
+          '메인 화면으로 돌아갑니다.'
+        );
+        return;
+      }
+      $status.textContent = `인식 실패 (${state.missCount}/${MAX_MISS}회)`;
+      cooldownTimer = setTimeout(beginCountdown, 1500);
+      return;
+    }
+
+    state.missCount = 0;
+    resolveRound(gesture);
+  }, 1500);
+}
+
+function resolveRound(userGesture) {
+  state.phase = 'cooldown';
+  const cpuGesture = randomCpuChoice();
+  const outcome    = judge(userGesture, cpuGesture);
+
+  // 유저 제스처 라벨
+  $userGIcon.textContent = ICONS[userGesture];
+  $userGName.textContent = LABELS[userGesture];
+
+  // 컴퓨터 제스처 라벨 + 큰 아이콘
+  $cpuGIcon.textContent   = ICONS[cpuGesture];
+  $cpuGName.textContent   = LABELS[cpuGesture];
+  $cpuIconBig.textContent = ICONS[cpuGesture];
+
+  if (outcome === 'win') {
+    state.userWins++;
+    state.userScore++;
+    showResult('WIN', 'result-win');
+  } else if (outcome === 'lose') {
+    state.cpuWins++;
+    state.cpuScore++;
+    showResult('LOSE', 'result-lose');
+  } else {
+    // 무승부: 표시 점수만 양쪽 +1, 선승 판단용 wins는 유지
+    state.userScore++;
+    state.cpuScore++;
+    showResult('DRAW', 'result-draw');
+  }
+
+  updateHeaderUI();
+
+  // 선승 조건은 실제 승리 횟수(wins)로만 판단
+  const gameOver =
+    state.userWins >= state.winsNeeded ||
+    state.cpuWins  >= state.winsNeeded ||
+    state.round    >= state.totalRounds;
+
+  cooldownTimer = setTimeout(gameOver ? endGame : beginCountdown, 2000);
+}
+
+function endGame() {
+  state.phase = 'ended';
+  const isWin  = state.userWins > state.cpuWins;
+  const isDraw = state.userWins === state.cpuWins;
+
+  showEndOverlay(
+    isWin ? '🎉 승리!' : isDraw ? '🤝 무승부' : '😢 패배...',
+    `최종 스코어  나 ${state.userScore} : ${state.cpuScore} 컴퓨터`,
+    ''
+  );
+}
+
+function showEndOverlay(title, score, reason) {
+  state.phase = 'ended';
+  $endTitle.textContent  = title;
+  $endScore.textContent  = score;
+  $endReason.textContent = reason;
+  $endOverlay.classList.add('active');
+}
+
+/* ═══════════════════════════════════════════
+   UI 헬퍼
+═══════════════════════════════════════════ */
+function showResult(text, cls) {
+  $result.textContent = text;
+  $result.className   = cls;
+}
+
+function resetChoiceUI() {
+  $userGIcon.textContent  = '❓';
+  $userGName.textContent  = '인식 대기';
+  $cpuGIcon.textContent   = '❓';
+  $cpuGName.textContent   = '컴퓨터';
+  $cpuIconBig.textContent = '❓';
+  $result.textContent     = '- - -';
+  $result.className       = 'result-wait';
+  $status.textContent     = '손을 보여주세요';
+}
+
+function updateHeaderUI() {
+  $roundText.textContent = `라운드 ${state.round} / ${state.totalRounds}`;
+  $scoreText.textContent = `나 ${state.userScore} : ${state.cpuScore} 컴퓨터`;
+}
+
+function clearAllTimers() {
+  clearTimeout(countdownTimer);
+  clearTimeout(captureTimer);
+  clearTimeout(cooldownTimer);
+}
+
+/* ═══════════════════════════════════════════
+   MediaPipe Hands
+   - 첫 startGame 시 한 번만 초기화
+   - 이후 재게임에서는 동일 인스턴스 재사용
+   - onHandResults에서 phase로 동작 제어
+═══════════════════════════════════════════ */
+let mpReady = false;
+let hands   = null;
+let camera  = null;
+
+function initMediaPipe() {
+  if (mpReady) return; // 이미 초기화된 경우 재사용
+  mpReady = true;
+
+  hands = new Hands({
+    locateFile: (file) =>
+      `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`,
+  });
+
+  hands.setOptions({
+    maxNumHands:            1,
+    modelComplexity:        1,
+    minDetectionConfidence: 0.7,
+    minTrackingConfidence:  0.6,
+  });
+
+  hands.onResults(onHandResults);
+
+  camera = new Camera($video, {
+    onFrame: async () => {
+      if (hands) await hands.send({ image: $video });
+    },
+    width:  640,
+    height: 480,
+  });
+
+  camera.start().catch((err) => {
+    console.error('카메라 오류:', err);
+    $status.textContent = '웹캠 오류: 브라우저 권한을 확인하세요.';
+  });
+}
+
+function onHandResults(results) {
+  // 게임이 활성 상태일 때만 처리
+  if (state.phase === 'idle' || state.phase === 'ended') return;
+
+  // 캔버스를 컨테이너 표시 크기에 맞춤 (object-fit:cover 보정을 위해)
+  const cW = $video.clientWidth  || 640;
+  const cH = $video.clientHeight || 480;
+  $canvas.width  = cW;
+  $canvas.height = cH;
+  ctx.clearRect(0, 0, cW, cH);
+
+  if (!results.multiHandLandmarks || results.multiHandLandmarks.length === 0) {
+    state.currentGesture = null;
+    $status.textContent  =
+      state.phase === 'capturing' ? '손이 감지되지 않음' : '손을 보여주세요';
+    return;
+  }
+
+  const lm      = results.multiHandLandmarks[0];
+  const gesture = detectGesture(lm);
+
+  drawLandmarks(lm, cW, cH);
+  state.currentGesture = gesture;
+
+  // 상태 배지 업데이트
+  $status.textContent = gesture
+    ? `${ICONS[gesture]} ${LABELS[gesture]}`
+    : '자세를 유지해주세요';
+
+  // 카운트다운·캡처 중 유저 라벨 실시간 표시
+  if (gesture && (state.phase === 'countdown' || state.phase === 'capturing')) {
+    $userGIcon.textContent = ICONS[gesture];
+    $userGName.textContent = LABELS[gesture];
+  }
+}
+
+function drawLandmarks(lm, cW, cH) {
+  const vW = $video.videoWidth  || 640;
+  const vH = $video.videoHeight || 480;
+
+  // object-fit: cover 의 스케일·오프셋 계산
+  // (비디오와 컨테이너 비율이 다를 때 크롭되는 양을 보정)
+  const scale = Math.max(cW / vW, cH / vH);
+  const ox    = (cW - vW * scale) / 2; // 음수 = 좌우 크롭
+  const oy    = (cH - vH * scale) / 2; // 음수 = 상하 크롭
+
+  // 정규화 좌표 → 캔버스 픽셀 변환
+  // x는 비디오가 CSS scaleX(-1)로 미러되므로 (1 - lm.x) 사용
+  const px = (x) => (1 - x) * vW * scale + ox;
+  const py = (y) => y        * vH * scale + oy;
+
+  const connections = [
+    [0,1],[1,2],[2,3],[3,4],
+    [0,5],[5,6],[6,7],[7,8],
+    [5,9],[9,10],[10,11],[11,12],
+    [9,13],[13,14],[14,15],[15,16],
+    [13,17],[17,18],[18,19],[19,20],[0,17],
+  ];
+
+  ctx.strokeStyle = 'rgba(102,126,234,0.85)';
+  ctx.lineWidth   = 2;
+  connections.forEach(([a, b]) => {
+    ctx.beginPath();
+    ctx.moveTo(px(lm[a].x), py(lm[a].y));
+    ctx.lineTo(px(lm[b].x), py(lm[b].y));
+    ctx.stroke();
+  });
+
+  lm.forEach((p) => {
+    ctx.beginPath();
+    ctx.arc(px(p.x), py(p.y), 4, 0, Math.PI * 2);
+    ctx.fillStyle   = '#fff';
+    ctx.fill();
+    ctx.strokeStyle = '#667eea';
+    ctx.lineWidth   = 1.5;
+    ctx.stroke();
+  });
+}
+</script>
+</body>
+</html>
