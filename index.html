@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>실시간 가위바위보</title>
+  <title>5위바위보</title>
 
   <!-- MediaPipe CDN -->
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
@@ -22,20 +22,22 @@
     <span class="bg-emoji" style="top:6%;  left:4%;   animation-duration:7s;">✊</span>
     <span class="bg-emoji" style="top:12%; right:7%;  animation-duration:9s;  animation-delay:-2s;">✌️</span>
     <span class="bg-emoji" style="top:50%; left:2%;   animation-duration:8s;  animation-delay:-4s;">🖐</span>
-    <span class="bg-emoji" style="top:70%; right:4%;  animation-duration:10s; animation-delay:-1s;">✊</span>
-    <span class="bg-emoji" style="bottom:8%;  left:8%;  animation-duration:7.5s; animation-delay:-3s;">✌️</span>
-    <span class="bg-emoji" style="bottom:15%; right:10%; font-size:5rem; animation-duration:11s; animation-delay:-5s; opacity:0.05;">🖐</span>
-    <span class="bg-emoji" style="top:32%; left:50%; font-size:6rem; animation-duration:13s; animation-delay:-6s; opacity:0.04;">✊</span>
+    <span class="bg-emoji" style="top:70%; right:4%;  animation-duration:10s; animation-delay:-1s;">👽</span>
+    <span class="bg-emoji" style="bottom:8%;  left:8%;  animation-duration:7.5s; animation-delay:-3s;">🦎</span>
+    <span class="bg-emoji" style="bottom:15%; right:10%; font-size:5rem; animation-duration:11s; animation-delay:-5s; opacity:0.05;">✊</span>
+    <span class="bg-emoji" style="top:32%; left:50%; font-size:6rem; animation-duration:13s; animation-delay:-6s; opacity:0.04;">🖐</span>
 
     <!-- 이모지 쇼케이스 -->
     <div class="emoji-showcase">
       <span class="sh-emoji">✊</span>
       <span class="sh-emoji">✌️</span>
       <span class="sh-emoji">🖐</span>
+      <span class="sh-emoji">👽</span>
+      <span class="sh-emoji">🦎</span>
     </div>
 
     <!-- 제목 -->
-    <div class="setup-title">가위바위보</div>
+    <div class="setup-title"><span class="num5">5</span>위바위보</div>
     <div class="setup-sub">✦ 웹캠으로 손 모양을 인식합니다 ✦</div>
 
     <!-- 구분선 -->
@@ -67,7 +69,7 @@
 
     <!-- 헤더 -->
     <div class="game-header">
-      <div class="hdr-title">✊ 가위바위보</div>
+      <div class="hdr-title">✊ <span class="num5">5</span>위바위보</div>
       <div class="hdr-round" id="round-text">라운드 -</div>
       <div class="hdr-right">
         <div class="hdr-score" id="score-text">나 0 : 0 컴퓨터</div>
@@ -78,6 +80,7 @@
     <!-- 라운드 결과 -->
     <div class="result-area">
       <div id="result-text" class="result-wait">- - -</div>
+      <div id="round-desc"></div>
     </div>
 
     <!-- 메인: 웹캠 vs 컴퓨터 -->
