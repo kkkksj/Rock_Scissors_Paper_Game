@@ -110,7 +110,7 @@ function detectGesture(lm) {
   // extCount >= 2: 손가락이 어느 정도 펴져 있어야 함 (주먹은 extCount 0~1이므로 자동 배제)
   const thumbNotTouching = handH > 0 && thumbToIdx / handH > 0.40;
 
-  if (fingersTogether && thumbNotTouching && extCount >= 2) return 'lizard';
+  if (fingersTogether && thumbNotTouching && extCount >= 1) return 'lizard';
 
   // ── 보 / 스팍: 4개 모두 펼침
   if (extCount >= 4) {
