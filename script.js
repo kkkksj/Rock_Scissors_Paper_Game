@@ -1,26 +1,50 @@
 /* ═══════════════════════════════════════════
    상수
 ═══════════════════════════════════════════ */
-const CHOICES  = ['rock', 'scissors', 'paper'];
-const ICONS    = { rock: '✊', scissors: '✌️', paper: '🖐' };
-const LABELS   = { rock: '바위', scissors: '가위', paper: '보' };
-const MAX_MISS = 3; // 연속 인식 실패 허용 횟수
+const CHOICES  = ['rock', 'scissors', 'paper', 'spock', 'lizard'];
+const ICONS    = { rock: '✊', scissors: '✌️', paper: '🖐', spock: '👽', lizard: '🦎' };
+const LABELS   = { rock: '바위', scissors: '가위', paper: '보', spock: '스팍', lizard: '도마뱀' };
+const MAX_MISS = 3;
+
+/* ═══════════════════════════════════════════
+   승리 관계 (winner → [losers])
+═══════════════════════════════════════════ */
+const WINS = {
+  scissors: ['paper',  'lizard'],
+  paper:    ['rock',   'spock'],
+  rock:     ['lizard', 'scissors'],
+  lizard:   ['spock',  'paper'],
+  spock:    ['scissors','rock'],
+};
+
+/* 승리 설명 텍스트 */
+const WIN_DESC = {
+  'scissors-paper':  '가위가 보를 자릅니다',
+  'scissors-lizard': '가위가 도마뱀을 자릅니다',
+  'paper-rock':      '보가 바위를 감쌉니다',
+  'paper-spock':     '보가 스팍을 감쌉니다',
+  'rock-lizard':     '바위가 도마뱀을 짓밟습니다',
+  'rock-scissors':   '바위가 가위를 부숩니다',
+  'lizard-spock':    '도마뱀이 스팍을 독살합니다',
+  'lizard-paper':    '도마뱀이 보를 먹습니다',
+  'spock-scissors':  '스팍이 가위를 부셉니다',
+  'spock-rock':      '스팍이 바위를 증발시킵니다',
+};
 
 /* ═══════════════════════════════════════════
    유틸
 ═══════════════════════════════════════════ */
 function randomCpuChoice() {
-  return CHOICES[Math.floor(Math.random() * 3)];
+  return CHOICES[Math.floor(Math.random() * CHOICES.length)];
 }
 
 function judge(user, cpu) {
   if (user === cpu) return 'draw';
-  if (
-    (user === 'rock'     && cpu === 'scissors') ||
-    (user === 'scissors' && cpu === 'paper')    ||
-    (user === 'paper'    && cpu === 'rock')
-  ) return 'win';
-  return 'lose';
+  return WINS[user].includes(cpu) ? 'win' : 'lose';
+}
+
+function getDescription(winner, loser) {
+  return WIN_DESC[`${winner}-${loser}`] || '';
 }
 
 /* ═══════════════════════════════════════════
@@ -32,15 +56,14 @@ function judge(user, cpu) {
    중지: 12 / 10 / 9
    약지: 16 / 14 / 13
    소지: 20 / 18 / 17
+   손바닥 폭 기준: 검지 MCP(5) ↔ 소지 MCP(17)
 ═══════════════════════════════════════════ */
 function isExtended(lm, tip, pip) {
-  // tip이 pip보다 위(y 작음) → 펼침
-  return lm[tip].y < lm[pip].y;
+  return lm[tip].y < lm[pip].y; // tip이 pip보다 위 → 펼침
 }
 
 function isClearlyBent(lm, tip, mcp) {
-  // tip이 MCP보다 아래 → 확실히 접힘
-  return lm[tip].y > lm[mcp].y;
+  return lm[tip].y > lm[mcp].y; // tip이 MCP보다 아래 → 확실히 접힘
 }
 
 function detectGesture(lm) {
@@ -49,17 +72,62 @@ function detectGesture(lm) {
   const ringUp   = isExtended(lm, 16, 14);
   const pinkyUp  = isExtended(lm, 20, 18);
 
-  // MCP 기준으로 약지·소지가 확실히 접혀있는지 판단 (가위 정확도 향상)
   const ringBent  = isClearlyBent(lm, 16, 13);
   const pinkyBent = isClearlyBent(lm, 20, 17);
 
   const extCount = [indexUp, middleUp, ringUp, pinkyUp].filter(Boolean).length;
 
-  if (extCount <= 1)                               return 'rock';     // 바위: 0~1개 펼침
-  if (indexUp && middleUp && ringBent && pinkyBent) return 'scissors'; // 가위: 검지+중지만 펼침
-  if (extCount >= 4)                               return 'paper';    // 보: 4개 모두 펼침
+  const handSpan = Math.abs(lm[5].x - lm[17].x); // 검지MCP ~ 소지MCP 가로 폭
 
-  return null; // 애매한 자세
+  // ── 가위: 검지+중지 펼침, 약지+소지 확실히 접힘
+  if (indexUp && middleUp && ringBent && pinkyBent) return 'scissors';
+
+  // ── 공통 계산
+  const dist = (a, b) => Math.sqrt(
+    (lm[a].x - lm[b].x) ** 2 + (lm[a].y - lm[b].y) ** 2
+  );
+  const handH = dist(0, 9); // 손목(0) ~ 중지MCP(9) 손 척도
+
+  // 인접 손가락 끝 사이의 2D 거리
+  const dIM = dist(8,  12); // 검지끝-중지끝
+  const dMR = dist(12, 16); // 중지끝-약지끝
+  const dRP = dist(16, 20); // 약지끝-소지끝
+
+  // x 기반 간격 (스팍·보 판별용)
+  const gapIM = Math.abs(lm[8].x  - lm[12].x);
+  const gapMR = Math.abs(lm[12].x - lm[16].x);
+  const gapRP = Math.abs(lm[16].x - lm[20].x);
+
+  // ── 도마뱀: 4손가락이 뭉쳐있고 엄지가 닿아있지 않은 "입을 벌린" 형태
+  const fingersTogether = handH > 0 &&
+    dIM / handH < 0.25 &&   // 검지-중지 밀착
+    dMR / handH < 0.25 &&   // 중지-약지 밀착
+    dRP / handH < 0.25;     // 약지-소지 밀착
+
+  const thumbToIdx = dist(4, 8); // 엄지끝 ~ 검지끝 거리
+
+  // 방향 무관 — 엄지와 검지 사이에 간격(닿지 않음)만 있으면 도마뱀
+  // extCount >= 2: 손가락이 어느 정도 펴져 있어야 함 (주먹은 extCount 0~1이므로 자동 배제)
+  const thumbNotTouching = handH > 0 && thumbToIdx / handH > 0.40;
+
+  if (fingersTogether && thumbNotTouching && extCount >= 1) return 'lizard';
+
+  // ── 보 / 스팍: 4개 모두 펼침
+  if (extCount >= 4) {
+    // 스팍: 중지·약지 V자 간격이 인접 간격보다 1.3배 이상 크면
+    if (gapMR > gapIM * 1.3 && gapMR > gapRP * 1.3) return 'spock';
+
+    // 보: 모든 인접 손가락이 고르게 벌어져 있을 때만
+    const allSpread = handSpan > 0 &&
+      gapIM / handSpan > 0.10 &&
+      gapMR / handSpan > 0.10 &&
+      gapRP / handSpan > 0.10;
+
+    return allSpread ? 'paper' : 'spock';
+  }
+
+  // ── 바위: 기본
+  return 'rock';
 }
 
 /* ═══════════════════════════════════════════
@@ -99,6 +167,7 @@ const $cpuGIcon   = document.getElementById('cpu-g-icon');
 const $cpuGName   = document.getElementById('cpu-g-name');
 const $cpuIconBig = document.getElementById('cpu-icon-big');
 const $result     = document.getElementById('result-text');
+const $roundDesc  = document.getElementById('round-desc');
 const $endOverlay = document.getElementById('end-overlay');
 const $endTitle   = document.getElementById('end-title');
 const $endScore   = document.getElementById('end-score');
@@ -160,10 +229,10 @@ function beginCountdown() {
 }
 
 function tickCountdown() {
-  $cdNum.textContent      = state.countdownVal;
-  $cdNum.style.animation  = 'none';
+  $cdNum.textContent     = state.countdownVal;
+  $cdNum.style.animation = 'none';
   void $cdNum.offsetWidth; // reflow → 애니메이션 재실행
-  $cdNum.style.animation  = '';
+  $cdNum.style.animation = '';
 
   countdownTimer = setTimeout(() => {
     state.countdownVal--;
@@ -210,7 +279,6 @@ function resolveRound(userGesture) {
 
   $userGIcon.textContent = ICONS[userGesture];
   $userGName.textContent = LABELS[userGesture];
-
   $cpuGIcon.textContent   = ICONS[cpuGesture];
   $cpuGName.textContent   = LABELS[cpuGesture];
   $cpuIconBig.textContent = ICONS[cpuGesture];
@@ -219,15 +287,18 @@ function resolveRound(userGesture) {
     state.userWins++;
     state.userScore++;
     showResult('WIN', 'result-win');
+    showDesc(getDescription(userGesture, cpuGesture));
   } else if (outcome === 'lose') {
     state.cpuWins++;
     state.cpuScore++;
     showResult('LOSE', 'result-lose');
+    showDesc(getDescription(cpuGesture, userGesture));
   } else {
     // 무승부: 표시 점수만 양쪽 +1, 선승 판단용 wins는 그대로
     state.userScore++;
     state.cpuScore++;
     showResult('DRAW', 'result-draw');
+    showDesc('무승부! 다시 겨뤄봐요.');
   }
 
   updateHeaderUI();
@@ -238,7 +309,7 @@ function resolveRound(userGesture) {
     state.cpuWins  >= state.winsNeeded ||
     state.round    >= state.totalRounds;
 
-  cooldownTimer = setTimeout(gameOver ? endGame : beginCountdown, 2000);
+  cooldownTimer = setTimeout(gameOver ? endGame : beginCountdown, 2500);
 }
 
 function endGame() {
@@ -269,6 +340,10 @@ function showResult(text, cls) {
   $result.className   = cls;
 }
 
+function showDesc(text) {
+  $roundDesc.textContent = text;
+}
+
 function resetChoiceUI() {
   $userGIcon.textContent  = '❓';
   $userGName.textContent  = '인식 대기';
@@ -277,6 +352,7 @@ function resetChoiceUI() {
   $cpuIconBig.textContent = '❓';
   $result.textContent     = '- - -';
   $result.className       = 'result-wait';
+  $roundDesc.textContent  = '';
   $status.textContent     = '손을 보여주세요';
 }
 
@@ -372,10 +448,10 @@ function drawLandmarks(lm, cW, cH) {
 
   // object-fit:cover 스케일·오프셋 계산
   const scale = Math.max(cW / vW, cH / vH);
-  const ox    = (cW - vW * scale) / 2; // 음수 = 좌우 크롭
-  const oy    = (cH - vH * scale) / 2; // 음수 = 상하 크롭
+  const ox    = (cW - vW * scale) / 2;
+  const oy    = (cH - vH * scale) / 2;
 
-  // 정규화 좌표 → 캔버스 픽셀 (x는 미러 보정을 위해 1 - lm.x 사용)
+  // 정규화 좌표 → 캔버스 픽셀 (x는 미러 보정)
   const px = (x) => (1 - x) * vW * scale + ox;
   const py = (y) => y        * vH * scale + oy;
 

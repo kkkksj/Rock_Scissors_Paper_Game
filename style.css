@@ -85,6 +85,21 @@ body {
   animation: titleGlow 2.5s ease-in-out infinite;
 }
 
+/* '5' 강조 (5위바위보) */
+.num5 {
+  color: #FFD700;
+  font-style: italic;
+  font-size: 1.15em;
+  text-shadow: 0 0 18px rgba(255,215,0,0.7), 0 2px 8px rgba(0,0,0,0.3);
+  display: inline-block;
+  animation: num5Pulse 2s ease-in-out infinite alternate;
+}
+
+@keyframes num5Pulse {
+  from { transform: scale(1);    text-shadow: 0 0 12px rgba(255,215,0,0.5); }
+  to   { transform: scale(1.08); text-shadow: 0 0 28px rgba(255,215,0,0.9); }
+}
+
 @keyframes titleGlow {
   0%, 100% { text-shadow: 0 0 20px rgba(255,255,255,0.4),  0 4px 24px rgba(0,0,0,0.25); }
   50%       { text-shadow: 0 0 50px rgba(255,255,255,0.75), 0 4px 24px rgba(0,0,0,0.25); }
@@ -207,6 +222,22 @@ body {
   font-size: 2.2rem;
   font-weight: 900;
   letter-spacing: 6px;
+}
+
+/* 승패 설명 텍스트 */
+#round-desc {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #666;
+  min-height: 1.3em;
+  margin-top: 4px;
+  letter-spacing: 0.3px;
+  animation: descFade 0.4s ease-out;
+}
+
+@keyframes descFade {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0);   }
 }
 
 .result-win  { color: #22c55e; }
