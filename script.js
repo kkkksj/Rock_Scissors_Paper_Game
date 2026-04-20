@@ -77,23 +77,57 @@ function detectGesture(lm) {
 
   const extCount = [indexUp, middleUp, ringUp, pinkyUp].filter(Boolean).length;
 
-  // 바위: 0~1개 펼침
-  if (extCount <= 1) return 'rock';
+  const handSpan = Math.abs(lm[5].x - lm[17].x); // 검지MCP ~ 소지MCP 가로 폭
 
-  // 가위: 검지+중지 펼침, 약지+소지 확실히 접힘
+  // ── 가위: 검지+중지 펼침, 약지+소지 확실히 접힘
   if (indexUp && middleUp && ringBent && pinkyBent) return 'scissors';
 
-  // 스팍 vs 보: 4개 모두 펼침 → 중지-약지 사이 x 간격으로 구분
-  // 스팍: 검지·중지 묶음 / 약지·소지 묶음 사이에 V자 간격 존재
+  // ── 공통 계산
+  const dist = (a, b) => Math.sqrt(
+    (lm[a].x - lm[b].x) ** 2 + (lm[a].y - lm[b].y) ** 2
+  );
+  const handH = dist(0, 9); // 손목(0) ~ 중지MCP(9) 손 척도
+
+  // 인접 손가락 끝 사이의 2D 거리
+  const dIM = dist(8,  12); // 검지끝-중지끝
+  const dMR = dist(12, 16); // 중지끝-약지끝
+  const dRP = dist(16, 20); // 약지끝-소지끝
+
+  // x 기반 간격 (스팍·보 판별용)
+  const gapIM = Math.abs(lm[8].x  - lm[12].x);
+  const gapMR = Math.abs(lm[12].x - lm[16].x);
+  const gapRP = Math.abs(lm[16].x - lm[20].x);
+
+  // ── 도마뱀: 4손가락이 뭉쳐있고 엄지가 닿아있지 않은 "입을 벌린" 형태
+  const fingersTogether = handH > 0 &&
+    dIM / handH < 0.25 &&   // 검지-중지 밀착
+    dMR / handH < 0.25 &&   // 중지-약지 밀착
+    dRP / handH < 0.25;     // 약지-소지 밀착
+
+  const thumbToIdx = dist(4, 8); // 엄지끝 ~ 검지끝 거리
+
+  // 방향 무관 — 엄지와 검지 사이에 간격(닿지 않음)만 있으면 도마뱀
+  // extCount >= 2: 손가락이 어느 정도 펴져 있어야 함 (주먹은 extCount 0~1이므로 자동 배제)
+  const thumbNotTouching = handH > 0 && thumbToIdx / handH > 0.40;
+
+  if (fingersTogether && thumbNotTouching && extCount >= 2) return 'lizard';
+
+  // ── 보 / 스팍: 4개 모두 펼침
   if (extCount >= 4) {
-    const gap      = Math.abs(lm[12].x - lm[16].x); // 중지-약지 팁 x거리
-    const handSpan = Math.abs(lm[5].x  - lm[17].x); // 손바닥 폭
-    if (handSpan > 0 && gap / handSpan > 0.22) return 'spock';
-    return 'paper';
+    // 스팍: 중지·약지 V자 간격이 인접 간격보다 1.3배 이상 크면
+    if (gapMR > gapIM * 1.3 && gapMR > gapRP * 1.3) return 'spock';
+
+    // 보: 모든 인접 손가락이 고르게 벌어져 있을 때만
+    const allSpread = handSpan > 0 &&
+      gapIM / handSpan > 0.10 &&
+      gapMR / handSpan > 0.10 &&
+      gapRP / handSpan > 0.10;
+
+    return allSpread ? 'paper' : 'spock';
   }
 
-  // 도마뱀: 2~3개 펼침 (가위도 보도 아닌 반쯤 쥔 형태 → 원통 쥔 모양)
-  return 'lizard';
+  // ── 바위: 기본
+  return 'rock';
 }
 
 /* ═══════════════════════════════════════════
