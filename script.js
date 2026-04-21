@@ -19,16 +19,16 @@ const WINS = {
 
 /* 승리 설명 텍스트 */
 const WIN_DESC = {
-  'scissors-paper':  '가위가 보를 자릅니다',
-  'scissors-lizard': '가위가 도마뱀을 자릅니다',
-  'paper-rock':      '보가 바위를 감쌉니다',
-  'paper-spock':     '보가 스팍을 감쌉니다',
-  'rock-lizard':     '바위가 도마뱀을 짓밟습니다',
-  'rock-scissors':   '바위가 가위를 부숩니다',
-  'lizard-spock':    '도마뱀이 스팍을 독살합니다',
-  'lizard-paper':    '도마뱀이 보를 먹습니다',
-  'spock-scissors':  '스팍이 가위를 부셉니다',
-  'spock-rock':      '스팍이 바위를 증발시킵니다',
+  'scissors-paper':  '가위는 보를 자릅니다',
+  'scissors-lizard': '가위는 도마뱀을 자릅니다',
+  'paper-rock':      '보는 바위를 덮습니다',
+  'paper-spock':     '종이는 스팍이 틀렸다는 것을 증명합니다',
+  'rock-lizard':     '바위는 도마뱀을 깔아 뭉갭니다',
+  'rock-scissors':   '바위는 가위를 부숩니다',
+  'lizard-spock':    '도마뱀은 스팍을 독에 감염시킵니다',
+  'lizard-paper':    '도마뱀은 종이를 먹습니다',
+  'spock-scissors':  '스팍은 가위를 박살냅니다',
+  'spock-rock':      '스팍은 바위를 증발시킵니다',
 };
 
 /* ═══════════════════════════════════════════
@@ -206,6 +206,14 @@ function resetToSetup() {
   $endOverlay.classList.remove('active');
   $game.style.display  = 'none';
   $setup.style.display = 'flex';
+}
+
+function showGuide() {
+  document.getElementById('guide-overlay').classList.add('active');
+}
+
+function hideGuide() {
+  document.getElementById('guide-overlay').classList.remove('active');
 }
 
 function quitGame() {
