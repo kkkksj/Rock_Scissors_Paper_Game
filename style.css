@@ -422,3 +422,185 @@ body {
   transition: transform 0.15s, box-shadow 0.15s;
 }
 .action-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(102,126,234,0.5); }
+
+/* 게임 설명 열기 버튼 (모드 카드 위) */
+.guide-open-btn {
+  display: block;
+  margin: 0 auto 40px;
+  padding: 10px 40px;
+  background: rgba(255,255,255,0.18);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1.5px solid rgba(255,255,255,0.45);
+  border-radius: 30px;
+  color: #fff;
+  font-size: 0.95rem;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.15s, box-shadow 0.2s;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+}
+.guide-open-btn:hover {
+  background: rgba(255,255,255,0.30);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.22);
+}
+
+/* ═══════════════════════════════════════════
+   게임 설명 오버레이
+═══════════════════════════════════════════ */
+#guide-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.72);
+  align-items: center;
+  justify-content: center;
+  z-index: 998;
+  padding: 16px;
+}
+
+#guide-overlay.active { display: flex; }
+
+#guide-card {
+  background: #fff;
+  border-radius: 24px;
+  padding: 24px 28px 20px;
+  width: 100%;
+  max-width: 900px;
+  max-height: 90vh;
+  overflow: hidden;
+  box-shadow: 0 30px 80px rgba(0,0,0,0.3);
+  animation: slideUp 0.35s ease-out;
+  display: flex;
+  flex-direction: column;
+}
+
+.guide-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+  flex-shrink: 0;
+}
+
+.guide-title {
+  font-size: 1.4rem;
+  font-weight: 900;
+  color: #333;
+}
+
+.guide-close {
+  width: 34px;
+  height: 34px;
+  border: none;
+  background: #f0f0f0;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #666;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s;
+}
+.guide-close:hover { background: #e0e0e0; }
+
+/* 좌우 분할 본문 */
+.guide-body {
+  display: flex;
+  gap: 20px;
+  flex: 1;
+  min-height: 0;
+  align-items: flex-start;
+}
+
+.guide-left {
+  flex: 0 0 auto;
+  width: 340px;
+  display: flex;
+  flex-direction: column;
+}
+
+.guide-right {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.guide-section-title {
+  font-size: 0.9rem;
+  font-weight: 800;
+  color: #555;
+  margin-bottom: 10px;
+  padding-bottom: 5px;
+  border-bottom: 2px solid #f0f0f0;
+  flex-shrink: 0;
+}
+
+/* 이미지 + 라벨 */
+.guide-img-wrap {
+  position: relative;
+  width: 100%;
+}
+
+.guide-img-wrap img {
+  width: 100%;
+  display: block;
+  border-radius: 12px;
+}
+
+.img-label {
+  position: absolute;
+  background: rgba(255,255,255,0.93);
+  border: 1.5px solid rgba(102,126,234,0.4);
+  border-radius: 20px;
+  padding: 3px 9px;
+  font-size: 0.75rem;
+  font-weight: 800;
+  color: #444;
+  white-space: nowrap;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+  pointer-events: none;
+}
+
+/* 규칙 표 */
+.rules-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8rem;
+}
+
+.rules-table th {
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: #fff;
+  padding: 7px 8px;
+  text-align: center;
+  font-weight: 700;
+  font-size: 0.78rem;
+}
+
+.rules-table th:first-child  { border-radius: 8px 0 0 0; }
+.rules-table th:last-child   { border-radius: 0 8px 0 0; }
+
+.rules-table td {
+  padding: 6px 8px;
+  text-align: center;
+  border-bottom: 1px solid #f0f0f0;
+  color: #333;
+}
+
+.rules-table td:last-child { text-align: left; color: #555; font-size: 0.75rem; }
+
+.rules-table tr:last-child td { border-bottom: none; }
+
+.rules-table tr:nth-child(even) td { background: #fafafa; }
+
+.rules-table .arrow {
+  color: #667eea;
+  font-weight: 900;
+  font-size: 0.9rem;
+}

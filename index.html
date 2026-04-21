@@ -43,6 +43,9 @@
     <!-- 구분선 -->
     <div class="setup-divider"></div>
 
+    <!-- 게임 설명 버튼 (모드 카드 위) -->
+    <button class="guide-open-btn" onclick="showGuide()">📖 게임 설명</button>
+
     <!-- 모드 카드 -->
     <div class="mode-cards">
       <button class="mode-card" onclick="startGame(1,1)">
@@ -126,6 +129,65 @@
     <div id="end-score"></div>
     <div id="end-reason"></div>
     <button class="action-btn" onclick="resetToSetup()">다시 하기</button>
+  </div>
+</div>
+
+<!-- ── 게임 설명 오버레이 ── -->
+<div id="guide-overlay">
+  <div id="guide-card">
+    <div class="guide-header">
+      <h2 class="guide-title">📖 게임 설명</h2>
+      <button class="guide-close" onclick="hideGuide()">✕</button>
+    </div>
+
+    <div class="guide-body">
+
+      <!-- 왼쪽: 손 모양 이미지 -->
+      <div class="guide-left">
+        <h3 class="guide-section-title">손 모양</h3>
+        <div class="guide-img-wrap">
+          <img src="./image/hand_shape.jpg" alt="손 모양 설명" />
+          <!-- 오각형 배치: 상단 가위 / 우상 보 / 우하 바위 / 좌하 도마뱀 / 좌상 스팍 -->
+          <span class="img-label" style="left:50%;top:2%;transform:translate(-50%,0);">✌️ 가위</span>
+          <span class="img-label" style="right:0%;top:30%;transform:translate(0,-50%);">🖐 보</span>
+          <span class="img-label" style="right:2%;bottom:10%;">✊ 바위</span>
+          <span class="img-label" style="left:2%;bottom:10%;">🦎 도마뱀</span>
+          <span class="img-label" style="left:0%;top:30%;transform:translate(0,-50%);">👽 스팍</span>
+        </div>
+      </div>
+
+      <!-- 오른쪽: 게임 규칙 표 -->
+      <div class="guide-right">
+        <h3 class="guide-section-title">게임 규칙</h3>
+        <table class="rules-table">
+          <thead>
+            <tr>
+              <th>이기는 손</th>
+              <th></th>
+              <th>지는 손</th>
+              <th>설명</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td>✌️ 가위</td><td class="arrow">→</td><td>🖐 보</td><td>가위는 보를 자릅니다</td></tr>
+            <tr><td>✌️ 가위</td><td class="arrow">→</td><td>🦎 도마뱀</td><td>가위는 도마뱀을 자릅니다</td></tr>
+            <tr><td>🖐 보</td><td class="arrow">→</td><td>✊ 바위</td><td>보는 바위를 덮습니다</td></tr>
+            <tr><td>🖐 보</td><td class="arrow">→</td><td>👽 스팍</td><td>종이는 스팍이 틀렸다는 것을 증명합니다</td></tr>
+            <tr><td>✊ 바위</td><td class="arrow">→</td><td>🦎 도마뱀</td><td>바위는 도마뱀을 깔아 뭉갭니다</td></tr>
+            <tr><td>✊ 바위</td><td class="arrow">→</td><td>✌️ 가위</td><td>바위는 가위를 부숩니다</td></tr>
+            <tr><td>🦎 도마뱀</td><td class="arrow">→</td><td>👽 스팍</td><td>도마뱀은 스팍을 독에 감염시킵니다</td></tr>
+            <tr><td>🦎 도마뱀</td><td class="arrow">→</td><td>🖐 보</td><td>도마뱀은 종이를 먹습니다</td></tr>
+            <tr><td>👽 스팍</td><td class="arrow">→</td><td>✌️ 가위</td><td>스팍은 가위를 박살냅니다</td></tr>
+            <tr><td>👽 스팍</td><td class="arrow">→</td><td>✊ 바위</td><td>스팍은 바위를 증발시킵니다</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+    </div><!-- /.guide-body -->
+
+    <div style="text-align:center;margin-top:16px;">
+      <button class="action-btn" onclick="hideGuide()">닫기</button>
+    </div>
   </div>
 </div>
 
